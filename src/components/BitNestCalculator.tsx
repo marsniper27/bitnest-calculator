@@ -87,7 +87,7 @@ export const BitNestCalculator = () => {
     const [borrowedAmount, setBorrowedAmount] = useState('');
     const [borrowPeriod, setBorrowPeriod] = useState('1'); // Default to 1 day
     const [borrowInterest, setBorrowInterest] = useState('0.1'); // Default to 1 day
-    const [interestInterval, setInterestInterval] = useState(1); // Default to 1 day
+    const [interestInterval, setInterestInterval] = useState('1'); // Default to 1 day
     const [withdrawPeriod, setWithdrawPeriod] = useState('1'); // Default to 1 day
     const [borrowCompoundMode, setBorrowCompoundMode] = useState(false);
     const [BorrowCompoundPeriods, setBorrowCompoundPeriods] = useState('1'); // Default to 1 day
@@ -100,7 +100,7 @@ export const BitNestCalculator = () => {
     const [reverseBorrowedFundsResult, setReverseBorrowedFundsResult] = useState<ReverseBorrowedFundsResult | null>(null);
     const [reverseBorrowPeriod, setReverseBorrowPeriod] = useState('1'); // Default to 1 day
     const [reverseBorrowInterest, setReverseBorrowInterest] = useState('0.1'); // Default to 1 day
-    const [reverseInterestInterval, setReverseInterestInterval] = useState(1); // Default to 1 day
+    const [reverseInterestInterval, setReverseInterestInterval] = useState('1'); // Default to 1 day
 
     // Calculate investment returns
     const calculateReturns = (principal: number, period: string, compound: boolean = false, periods: string = '1'): number => {
