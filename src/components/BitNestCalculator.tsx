@@ -104,12 +104,16 @@ export const BitNestCalculator = () => {
 
     // Calculate investment returns
     const calculateReturns = (principal: number, period: string, compound: boolean = false, periods: string = '1'): number => {
+        console.log('period: ', period)
         const rate = RATES[period] / 100;
+        console.log('rate: ', rate)
         const numPeriods = parseFloat(periods);
+        console.log('numPeriods: ', numPeriods)
 
         if (compound) {
             return principal * Math.pow((1 + rate), numPeriods) - principal;
         }
+        console.log('principal * rate: ', principal * rate)
         return principal * rate;
     };
 
@@ -125,24 +129,25 @@ export const BitNestCalculator = () => {
         periodInDays: number
     ): LoanCalculation => {
         const interestIntervalNum = InterestInterval[interestInterval]
-        // console.log('principalAmount: ', principalAmount)
-        // console.log('interestRate: ', interestRate)
-        // console.log('interestInterval: ', interestInterval)
-        // console.log('interestIntervalNum: ', interestIntervalNum)
+        console.log('principalAmount: ', principalAmount)
+        console.log('interestRate: ', interestRate)
+        console.log('interestInterval: ', interestInterval)
+        console.log('interestIntervalNum: ', interestIntervalNum)
         // Convert annual interest rate to daily rate
         const dailyInterestRate = (interestRate / interestIntervalNum);
-        // console.log('dailyInterest: ', dailyInterestRate)
-        // console.log('periodInDays: ', periodInDays)
+        console.log('dailyInterest: ', dailyInterestRate)
+        console.log('periodInDays: ', periodInDays)
 
         const totalInterest = (dailyInterestRate * periodInDays)/100
 
-        // console.log('totalInterest: ', totalInterest)
+        console.log('totalInterest: ', totalInterest)
         // Calculate total interest paid for the specified number of days
         const totalInterestPaid = principalAmount * totalInterest;
-        // console.log('totalInterestPaid: ', totalInterestPaid)
+        console.log('totalInterestPaid: ', totalInterestPaid)
 
         // Calculate total amount owed (principal + interest)
         const totalAmountOwed = principalAmount + totalInterestPaid;
+        console.log('totalAmountOwed: ', totalAmountOwed)
 
         return {
             principalAmount,
@@ -199,16 +204,25 @@ export const BitNestCalculator = () => {
 
         const borrowPeriodInterest = calculateCreditCardInterest(borrowedAmountNum, borrowInterestNum, borrowPeriodNum);
 
+        console.log('borrowPeriodInterest: ', borrowPeriodInterest)
+
+
+        console.log('borrowedAmountNum: ', borrowedAmountNum)
+        console.log('borrowPeriod: ', borrowPeriod)
         // Calculate returns during borrow period
-        const borrowPeriodReturns = calculateReturns(borrowedAmountNum, borrowPeriod);
+        const borrowPeriodReturns = calculateReturns(borrowedAmountNum, withdrawPeriod);
+        console.log('borrowPeriodReturns: ', borrowPeriodReturns)
 
         // Net returns after repaying borrowed amount
         const netReturns = borrowPeriodReturns - borrowPeriodInterest.totalInterestPaid;
+        console.log('netReturns: ', netReturns)
 
         // Calculate potential withdraw amount on net returns
         const initialWithdrawReturns = calculateReturns(netReturns, withdrawPeriod);
+        console.log('initialWithdrawReturns: ', initialWithdrawReturns)
         // Calculate potential withdraw amount on net returns
         const withdrawReturns = calculateReturns(netReturns, withdrawPeriod, borrowCompoundMode, BorrowCompoundPeriods);
+        console.log('withdrawReturns: ', withdrawReturns)
 
         const result: BorrowedFundsResult = {
             borrowedAmount: borrowedAmountNum,
@@ -514,7 +528,7 @@ export const BitNestCalculator = () => {
                     </div>
 
                     {/* Reverse Borrowed Funds Scenario */}
-                    {/* <div className="bg-white rounded-md p-4 space-y-4">
+                     <div className="bg-white rounded-md p-4 space-y-4">
                         <h3 className="text-md font-medium text-gray-700">Reverse Borrowed Funds Scenario</h3>
                         <div className="space-y-4">
                             <div>
@@ -528,7 +542,7 @@ export const BitNestCalculator = () => {
                                     className="w-full border border-gray-300 rounded"
                                 />
                             </div>
-                            {/* <div>
+                            <div>
                                 <Label htmlFor="borrowPeriod2" className="text-xs text-gray-600 mb-1 block">Borrow Period</Label>
                                 <Select value={borrowPeriod} onValueChange={setBorrowPeriod}>
                                     <SelectTrigger className="w-full border border-gray-300 rounded">
@@ -542,8 +556,8 @@ export const BitNestCalculator = () => {
                                         ))}
                                     </SelectContent>
                                 </Select>
-                            </div> 
-                            <div>
+                            </div>
+                            {/* <div>
                                 <Label htmlFor="reverseBorrowPeriod" className="text-xs text-gray-600 mb-1 block">Borrow Period (days)</Label>
                                 <Input
                                     id="reverseBorrowPeriod"
@@ -553,8 +567,8 @@ export const BitNestCalculator = () => {
                                     onChange={(e) => setReverseBorrowPeriod(e.target.value)}
                                     className="w-full border border-gray-300 rounded"
                                 />
-                            </div>
-                            <div>
+                            </div> */}
+                            {/* <div>
                                 <Label htmlFor="reverseBorrowInterest" className="text-xs text-gray-600 mb-1 block">Borrow Interest Rate %</Label>
                                 <Input
                                     id="reverseBorrowInterest"
@@ -579,7 +593,7 @@ export const BitNestCalculator = () => {
                                         ))}
                                     </SelectContent>
                                 </Select>
-                            </div>
+                            </div> */}
                             <div>
                                 <Label htmlFor="withdrawPeriod2" className="text-xs text-gray-600 mb-1 block">Withdraw Period</Label>
                                 <Select value={withdrawPeriod} onValueChange={setWithdrawPeriod}>
@@ -616,7 +630,7 @@ export const BitNestCalculator = () => {
                                 </div>
                             )}
                         </div>
-                    </div> */}
+                    </div> 
                 </CardContent>
             </Card>
         </div>
