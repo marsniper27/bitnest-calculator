@@ -73,6 +73,8 @@ export const BitNestCalculator = () => {
         const code = params.get('invitecode');
         if (code) {
             setInviteCode(code);
+        } else {
+            setInviteCode('ZKPPQ');
         }
     }, []);
 
@@ -688,8 +690,8 @@ export const BitNestCalculator = () => {
                                         ) : (
                                             <>
                                                 {/* <p className="font-bold text-blue-600">Withdraw Amount: ${borrowedFundsResult.withdrawReturns.toFixed(2)} per {borrowedFundsResult.withdrawPeriod} Days</p> */}
-                                                    <p className="font-bold text-blue-600">Profit: {borrowedFundsResult.totalNetProfit.toFixed(2)} USDT</p>
-                                                    <p className="font-bold text-green-700">Reinvest Profit Returns: {borrowedFundsResult.withdrawReturns.toFixed(2)} USDT per {borrowedFundsResult.withdrawPeriod} Days</p>
+                                                <p className="font-bold text-blue-600">Profit: {borrowedFundsResult.totalNetProfit.toFixed(2)} USDT</p>
+                                                <p className="font-bold text-green-700">Reinvest Profit Returns: {borrowedFundsResult.withdrawReturns.toFixed(2)} USDT per {borrowedFundsResult.withdrawPeriod} Days</p>
                                             </>
                                         )}
                                     </div>
