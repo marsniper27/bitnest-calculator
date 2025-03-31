@@ -92,6 +92,9 @@ export const BitNestCalculator = () => {
     const [borrowCompoundMode, setBorrowCompoundMode] = useState(false);
     const [BorrowCompoundPeriods, setBorrowCompoundPeriods] = useState('1'); // Default to 1 day
     const [desiredWithdrawAmount, setDesiredWithdrawAmount] = useState('');
+    const [useUpfrontFee, setUseUpfrontFee] = useState(false);
+    const [upfrontFeePercentage, setUpfrontFeePercentage] = useState(false);
+    const [upfrontFee, setUpfrontFee] = useState('0');
 
     // State for results
     const [investmentResult, setInvestmentResult] = useState<InvestmentResult | null>(null);
@@ -128,7 +131,8 @@ export const BitNestCalculator = () => {
         principalAmount: number,
         interestRate: number,
         periodInDays: number,
-        interestInterval: string
+        interestInterval: string,
+        upfrontFees:number
     ): LoanCalculation => {
         const interestIntervalNum = InterestInterval[interestInterval]
         console.log('principalAmount: ', principalAmount)
@@ -148,7 +152,7 @@ export const BitNestCalculator = () => {
         console.log('totalInterestPaid: ', totalInterestPaid)
 
         // Calculate total amount owed (principal + interest)
-        const totalAmountOwed = principalAmount + totalInterestPaid;
+        const totalAmountOwed = principalAmount + totalInterestPaid + upfrontFees;
         console.log('totalAmountOwed: ', totalAmountOwed)
 
         return {
@@ -202,9 +206,18 @@ export const BitNestCalculator = () => {
         const borrowedAmountNum = parseFloat(borrowedAmount || '0');
         const borrowInterestNum = parseFloat(borrowInterest || '0');
         const borrowPeriodNum = parseFloat(borrowPeriod || '0');
+        const upfrontFeeNum = parseFloat(upfrontFee || '0');
+
+        let upfrontFees = 0
+        if(useUpfrontFee){
+            upfrontFees = upfrontFeeNum;
+            if(upfrontFeePercentage){
+                upfrontFees = borrowedAmountNum * (upfrontFeeNum / 100)
+            }
+        }
 
 
-        const borrowPeriodInterest = calculateCreditCardInterest(borrowedAmountNum, borrowInterestNum, borrowPeriodNum, interestInterval);
+        const borrowPeriodInterest = calculateCreditCardInterest(borrowedAmountNum, borrowInterestNum, borrowPeriodNum, interestInterval, upfrontFees);
 
         console.log('borrowPeriodInterest: ', borrowPeriodInterest)
 
@@ -503,6 +516,43 @@ export const BitNestCalculator = () => {
                                     </SelectContent>
                                 </Select>
                             </div>
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="useUpfrontFee"
+                                    checked={useUpfrontFee}
+                                    onCheckedChange={(checked) => setUseUpfrontFee(!!checked)}
+                                    className="border-gray-300"
+                                />
+                                <Label htmlFor="useUpfrontFee" className="text-xs text-gray-600">
+                                    Upfront Fee
+                                </Label>
+                            </div>
+                            {useUpfrontFee && (
+                                <>
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox
+                                            id="upfrontFeePercentage"
+                                            checked={upfrontFeePercentage}
+                                            onCheckedChange={(checked) => setUpfrontFeePercentage(!!checked)}
+                                            className="border-gray-300"
+                                        />
+                                        <Label htmlFor="upfrontFeePercentage" className="text-xs text-gray-600">
+                                            Upfront fee is percentage
+                                        </Label>
+                                    </div>
+                                <div>
+                                    <Label htmlFor="upfrontFee" className="text-xs text-gray-600 mb-1 block">Upfront Fee</Label>
+                                        <Input
+                                            id="upfrontFee"
+                                            type="number"
+                                            placeholder="Enter upfront fee"
+                                            value={upfrontFee}
+                                            onChange={(e) => setUpfrontFee(e.target.value)}
+                                            className="w-full border border-gray-300 rounded"
+                                        />
+                                </div>
+                                </>
+                            )} 
                             {/* <div className="flex items-center space-x-2">
                                 <Checkbox
                                     id="borrowCompoundReturns"
