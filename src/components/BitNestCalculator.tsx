@@ -73,7 +73,7 @@ export const BitNestCalculator = () => {
         'Weekly': 7,
         'Bi-weekly': 14,
         'Monthly': 30,
-        'Yearly': 356,
+        'Yearly': 365,
     };
 
     // State for main investment calculation
