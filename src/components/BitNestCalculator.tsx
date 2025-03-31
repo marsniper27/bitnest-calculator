@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -33,6 +33,7 @@ interface LoanCalculation {
     interestRate: number;
     periodInDays: number;
     totalInterestPaid: number;
+    feePaid: number;
     totalAmountOwed: number;
 }
 
@@ -56,9 +57,49 @@ interface ReverseBorrowedFundsResult {
     netReturnsNeeded: number;
     withdrawReturns: number;
     totalNetProfit: number;
+    totalFees: number;
 }
 
 export const BitNestCalculator = () => {
+    // Get invite code from URL if present
+    const [inviteCode, setInviteCode] = useState<string | null>(null);
+    const [showToast, setShowToast] = useState(false);
+    const [toastMessage, setToastMessage] = useState('');
+    const [toastType, setToastType] = useState<'success' | 'error'>('success');
+
+    useEffect(() => {
+        // Get URL parameters
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get('invitecode');
+        if (code) {
+            setInviteCode(code);
+        }
+    }, []);
+
+    const handleSignup = () => {
+        if (inviteCode) {
+            window.location.href = `https://bitnest.me/${inviteCode}`;
+        }
+    };
+
+    const copySignup = async () => {
+        if (inviteCode) {
+            try {
+                await navigator.clipboard.writeText(`https://bitnest.me/${inviteCode}`);
+                setToastMessage('URL copied to clipboard!');
+                setToastType('success');
+                setShowToast(true);
+                setTimeout(() => setShowToast(false), 3000);
+            } catch (err) {
+                console.error('Failed to copy to clipboard:', err);
+                setToastMessage('Failed to copy URL');
+                setToastType('error');
+                setShowToast(true);
+                setTimeout(() => setShowToast(false), 3000);
+            }
+        }
+    };
+
     // Investment rates
     const RATES: RatesType = {
         '1': 0.4,
@@ -72,6 +113,7 @@ export const BitNestCalculator = () => {
         'Daily': 1,
         'Weekly': 7,
         'Bi-weekly': 14,
+        'Credit Card': 21,
         'Monthly': 30,
         'Yearly': 365,
     };
@@ -86,7 +128,7 @@ export const BitNestCalculator = () => {
     // State for borrowed funds calculation
     const [borrowedAmount, setBorrowedAmount] = useState('');
     const [borrowPeriod, setBorrowPeriod] = useState('1'); // Default to 1 day
-    const [borrowInterest, setBorrowInterest] = useState('0.1'); // Default to 1 day
+    const [borrowInterest, setBorrowInterest] = useState(''); // Default to 1 day
     const [interestInterval, setInterestInterval] = useState('1'); // Default to 1 day
     const [withdrawPeriod, setWithdrawPeriod] = useState('1'); // Default to 1 day
     const [borrowCompoundMode, setBorrowCompoundMode] = useState(false);
@@ -103,7 +145,7 @@ export const BitNestCalculator = () => {
     const [reverseBorrowedFundsResult, setReverseBorrowedFundsResult] = useState<ReverseBorrowedFundsResult | null>(null);
     const [withdrawPeriod2, setWithdrawPeriod2] = useState('1'); // Default to 1 day
     const [reverseBorrowPeriod, setReverseBorrowPeriod] = useState('1'); // Default to 1 day
-    const [reverseBorrowInterest, setReverseBorrowInterest] = useState('0.1'); // Default to 1 day
+    const [reverseBorrowInterest, setReverseBorrowInterest] = useState(''); // Default to 1 day
     const [reverseInterestInterval, setReverseInterestInterval] = useState('1'); // Default to 1 day
 
     // Calculate investment returns
@@ -132,7 +174,7 @@ export const BitNestCalculator = () => {
         interestRate: number,
         periodInDays: number,
         interestInterval: string,
-        upfrontFees:number
+        upfrontFees: number
     ): LoanCalculation => {
         const interestIntervalNum = InterestInterval[interestInterval]
         console.log('principalAmount: ', principalAmount)
@@ -160,6 +202,7 @@ export const BitNestCalculator = () => {
             interestRate: interestRate,
             periodInDays,
             totalInterestPaid,
+            feePaid: upfrontFees,
             totalAmountOwed
         };
     }
@@ -209,9 +252,9 @@ export const BitNestCalculator = () => {
         const upfrontFeeNum = parseFloat(upfrontFee || '0');
 
         let upfrontFees = 0
-        if(useUpfrontFee){
+        if (useUpfrontFee) {
             upfrontFees = upfrontFeeNum;
-            if(upfrontFeePercentage){
+            if (upfrontFeePercentage) {
                 upfrontFees = borrowedAmountNum * (upfrontFeeNum / 100)
             }
         }
@@ -229,7 +272,7 @@ export const BitNestCalculator = () => {
         console.log('borrowPeriodReturns: ', borrowPeriodReturns)
 
         // Net returns after repaying borrowed amount
-        const netReturns = borrowPeriodReturns - borrowPeriodInterest.totalInterestPaid;
+        const netReturns = borrowPeriodReturns - (borrowPeriodInterest.totalInterestPaid + borrowPeriodInterest.feePaid);
         console.log('netReturns: ', netReturns)
 
         // Calculate potential withdraw amount on net returns
@@ -248,7 +291,7 @@ export const BitNestCalculator = () => {
             netReturns,
             initialWithdrawReturns,
             withdrawReturns,
-            totalNetProfit: netReturns + withdrawReturns
+            totalNetProfit: netReturns
         };
 
         setBorrowedFundsResult(result);
@@ -277,7 +320,7 @@ export const BitNestCalculator = () => {
         const borrowPeriodRate = RATES[withdrawPeriod2] / 100;
         console.log("borrowPeriodRate:", borrowPeriodRate)
 
-        // Calculate investment rate for the withdraw period
+        // Calculate investment rate for the Bitnest Loop
         const withdrawPeriodRate = RATES[withdrawPeriod2] / 100;
         console.log("withdrawPeriodRate:", withdrawPeriodRate)
 
@@ -285,8 +328,10 @@ export const BitNestCalculator = () => {
         // desiredReturn = (loanAmount * borrowPeriodRate) - (loanAmount * totalInterestRate)
         // desiredReturn = loanAmount * (borrowPeriodRate - totalInterestRate)
         // loanAmount = desiredReturn / (borrowPeriodRate - totalInterestRate)
-        const borrowedAmountNeeded = desiredWithdrawAmountNum / (borrowPeriodRate - totalInterestRate);
-        console.log("borrowedAmountNeeded:", borrowedAmountNeeded)
+        const IntermediateBorrowedAmountNeeded = desiredWithdrawAmountNum / withdrawPeriodRate;
+        console.log("IntermediateBorrowedAmountNeeded:", IntermediateBorrowedAmountNeeded)
+
+        const borrowedAmountNeeded = IntermediateBorrowedAmountNeeded / (borrowPeriodRate - totalInterestRate);
 
         // Calculate the total interest that will be paid
         const totalInterestPaid = borrowedAmountNeeded * totalInterestRate;
@@ -311,22 +356,55 @@ export const BitNestCalculator = () => {
             borrowedAmountNeeded,
             netReturnsNeeded: netReturns,
             withdrawReturns: withdrawReturns,
-            totalNetProfit: netReturns + withdrawReturns
+            totalNetProfit: netReturns + withdrawReturns,
+            totalFees: totalInterestPaid
         };
 
         setReverseBorrowedFundsResult(result);
     };
 
     return (
-        <div className="flex items-center justify-center p-4 bg-white min-h-screen">
+        <div className="flex flex-col items-center justify-center p-4 bg-white min-h-screen">
+            {/* Top Join Button */}
+
             <Card className="w-full max-w-xl rounded-lg border border-gray-200 shadow-md overflow-hidden">
                 <CardHeader className="bg-[#6436C0] text-white p-4">
                     <CardTitle className="text-xl font-bold text-center">BitNest Investment Calculator</CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 space-y-6 bg-white">
+                    <p className="text-center text-lg font-medium text-gray-800 mb-4">
+                        Are you ready to unlock the potential of BitNest's passive income opportunity?
+                    </p>
+                    {inviteCode && (
+                        <div className="w-full max-w-xl mb-4">
+                            <Button
+                                onClick={handleSignup}
+                                className="w-full bg-[#FF0000] hover:bg-[#E30B5C] text-white py-6 text-lg font-bold"
+                            >
+                                Join Bitnest Today!
+                            </Button>
+                            <div className="text-center space-y-2">
+                                <p className="text-sm text-gray-600">
+                                    On mobile device - copy this url and paste it in your metamask wallet browser
+                                </p>
+                                <button
+                                    onClick={copySignup}
+                                    className="text-[#6436C0] hover:text-[#5328A9] underline text-sm break-all"
+                                >
+                                    https://bitnest.me/{inviteCode}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                    <div className="bg-white p-4 space-y-4 border-b-2 border-gray-300"></div>
+                    <p className="text-center text-lg font-medium text-gray-800 mb-4">
+                        ↓ Calculate your returns below ↓
+                    </p>
+                </CardContent>
+                <CardContent className="p-4 space-y-6 bg-white">
                     {/* Investment Returns */}
-                    <div className="bg-white rounded-md p-4 space-y-4">
-                        <h3 className="text-md font-medium text-gray-700">Investment Returns</h3>
+                    <div className="bg-white p-4 space-y-4 border-b-2 border-gray-300">
+                        <h3 className="text-lg font-medium text-gray-700">Investment Returns</h3>
                         <div className="space-y-4">
                             <div>
                                 <Label htmlFor="principal" className="text-xs text-gray-600 mb-1 block">Principal Amount</Label>
@@ -389,19 +467,19 @@ export const BitNestCalculator = () => {
                             <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
                                 <h3 className="font-bold text-xl text-gray-800 mb-4">Investment Results</h3>
                                 <div className="grid md:grid-cols-3 gap-2">
-                                    <p>Principal: <span className="font-semibold text-blue-700">${investmentResult.principal.toFixed(2)}</span></p>
+                                    <p>Principal: <span className="font-semibold text-blue-700">{investmentResult.principal.toFixed(2)}</span> USDT</p>
                                     <p>Period: <span className="font-semibold">{investmentResult.period} Days</span></p>
                                     <p>Compound Mode: <span className="font-semibold">{investmentResult.compoundMode ? 'Yes' : 'No'}</span></p>
-                                    <p>Returns: <span className="font-semibold text-green-600">${investmentResult.returns.toFixed(2)}</span></p>
-                                    <p>Total Value: <span className="font-semibold text-blue-700">${investmentResult.totalValue.toFixed(2)}</span></p>
+                                    <p>Returns: <span className="font-semibold text-green-600">{investmentResult.returns.toFixed(2)}</span> USDT</p>
+                                    <p>Total Value: <span className="font-semibold text-blue-700">{investmentResult.totalValue.toFixed(2)}</span> USDT</p>
                                 </div>
                             </div>
                         )}
                     </div>
 
                     {/* Target Return Planning */}
-                    <div className="bg-white rounded-md p-4 space-y-4">
-                        <h3 className="text-md font-medium text-gray-700">Target Return Planning</h3>
+                    <div className="bg-white p-4 space-y-4 border-b-2 border-gray-300">
+                        <h3 className="text-lg font-medium text-gray-700">Target Return Planning</h3>
                         <div className="space-y-4">
                             <div>
                                 <Label htmlFor="targetReturn" className="text-xs text-gray-600 mb-1 block">Target Return Amount</Label>
@@ -439,10 +517,10 @@ export const BitNestCalculator = () => {
                                 <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
                                     <h3 className="font-bold text-xl text-gray-800 mb-4">Target Return Results</h3>
                                     <div className="grid md:grid-cols-2 gap-2">
-                                        <p>Target Return: <span className="font-semibold text-blue-700">${targetReturnResult.targetReturn.toFixed(2)}</span></p>
+                                        <p>Target Return: <span className="font-semibold text-blue-700">{targetReturnResult.targetReturn.toFixed(2)}</span> USDT</p>
                                         <p>Period: <span className="font-semibold">{targetReturnResult.period} Days</span></p>
-                                        <p>Required Principal: <span className="font-semibold text-green-600">${targetReturnResult.requiredPrincipal.toFixed(2)}</span></p>
-                                        <p>Potential Returns: <span className="font-semibold text-blue-700">${targetReturnResult.potentialReturns.toFixed(2)}</span></p>
+                                        <p>Required Principal: <span className="font-semibold text-green-600">{targetReturnResult.requiredPrincipal.toFixed(2)}</span> USDT</p>
+                                        <p>Potential Returns: <span className="font-semibold text-blue-700">{targetReturnResult.potentialReturns.toFixed(2)}</span> USDT</p>
                                     </div>
                                 </div>
                             )}
@@ -450,8 +528,8 @@ export const BitNestCalculator = () => {
                     </div>
 
                     {/* Borrowed Funds Scenario */}
-                    <div className="bg-white rounded-md p-4 space-y-4">
-                        <h3 className="text-md font-medium text-gray-700">Borrowed Funds Scenario</h3>
+                    <div className="bg-white p-4 space-y-4 border-b-2 border-gray-300">
+                        <h3 className="text-lg font-medium text-gray-700">Borrowed Funds Scenario</h3>
                         <div className="space-y-4">
                             <div>
                                 <Label htmlFor="borrowedAmount" className="text-xs text-gray-600 mb-1 block">Borrowed Amount</Label>
@@ -502,10 +580,10 @@ export const BitNestCalculator = () => {
                                 </Select>
                             </div>
                             <div>
-                                <Label htmlFor="withdrawPeriod" className="text-xs text-gray-600 mb-1 block">Withdraw Period</Label>
+                                <Label htmlFor="withdrawPeriod" className="text-xs text-gray-600 mb-1 block">Bitnest Loop</Label>
                                 <Select value={withdrawPeriod} onValueChange={setWithdrawPeriod}>
                                     <SelectTrigger className="w-full border border-gray-300 rounded">
-                                        <SelectValue placeholder="Select withdraw period" />
+                                        <SelectValue placeholder="Select Bitnest Loop" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {Object.entries(RATES).map(([days, rate]) => (
@@ -540,8 +618,8 @@ export const BitNestCalculator = () => {
                                             Upfront fee is percentage
                                         </Label>
                                     </div>
-                                <div>
-                                    <Label htmlFor="upfrontFee" className="text-xs text-gray-600 mb-1 block">Upfront Fee</Label>
+                                    <div>
+                                        <Label htmlFor="upfrontFee" className="text-xs text-gray-600 mb-1 block">Upfront Fee</Label>
                                         <Input
                                             id="upfrontFee"
                                             type="number"
@@ -550,9 +628,9 @@ export const BitNestCalculator = () => {
                                             onChange={(e) => setUpfrontFee(e.target.value)}
                                             className="w-full border border-gray-300 rounded"
                                         />
-                                </div>
+                                    </div>
                                 </>
-                            )} 
+                            )}
                             {/* <div className="flex items-center space-x-2">
                                 <Checkbox
                                     id="borrowCompoundReturns"
@@ -587,26 +665,31 @@ export const BitNestCalculator = () => {
                                 <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
                                     <h3 className="font-bold text-xl text-gray-800 mb-4">Borrowed Funds Results</h3>
                                     <div className="grid md:grid-cols-3 gap-2">
-                                        <p>Borrow Period Returns: <span className="font-semibold text-green-600">${borrowedFundsResult.borrowPeriodReturns.toFixed(2)}</span></p>
-                                        <p>Borrow Interest: <span className="font-semibold">${borrowedFundsResult.loan.totalInterestPaid.toFixed(4)}</span></p>
+                                        <p className="font-bold" >Total Returns (including initial): <span className="font-semibold text-green-600">{(borrowedFundsResult.borrowPeriodReturns + borrowedFundsResult.borrowedAmount).toFixed(2)}</span> USDT</p>
+                                        <p className="font-bold text-red-600">Borrowing Cost: <span className="font-semibold">{(borrowedFundsResult.loan.totalInterestPaid + borrowedFundsResult.loan.feePaid).toFixed(4)}</span> USDT</p>
+                                        {/* <p>Borrow Interest: <span className="font-semibold">${borrowedFundsResult.loan.totalInterestPaid.toFixed(4)}</span></p> */}
+                                        {/* <p>Borrow Period Returns: <span className="font-semibold text-green-600">${borrowedFundsResult.borrowPeriodReturns.toFixed(2)}</span></p> */}
+                                        {/* <p>Borrow Interest: <span className="font-semibold">${borrowedFundsResult.loan.totalInterestPaid.toFixed(4)}</span></p> */}
                                         {/* <p>Borrowed Amount: <span className="font-semibold text-blue-700">${borrowedFundsResult.borrowedAmount.toFixed(2)}</span></p>
                                         <p>Borrow Period: <span className="font-semibold">{borrowedFundsResult.borrowPeriod} Days</span></p>
                                         <p>Borrow Interest: <span className="font-semibold">${borrowedFundsResult.loan.totalInterestPaid.toFixed(4)}</span></p> */}
-                                        <p>Borrow Repayment Amount: <span className="font-semibold">${borrowedFundsResult.loan.totalAmountOwed.toFixed(4)}</span></p>
+                                        {/* <p>Borrow Repayment Amount: <span className="font-semibold">${borrowedFundsResult.loan.totalAmountOwed.toFixed(4)}</span></p> */}
                                         {/* <p>Borrow Period Returns: <span className="font-semibold text-green-600">${borrowedFundsResult.borrowPeriodReturns.toFixed(2)}</span></p> */}
-                                        <p>Return on Borrow: <span className="font-semibold text-blue-700">${borrowedFundsResult.netReturns.toFixed(2)}</span></p>
+                                        {/* <p>Return on Borrow: <span className="font-semibold text-blue-700">${borrowedFundsResult.netReturns.toFixed(2)}</span></p> */}
+                                        {/* <p>Profit: <span className="font-semibold text-blue-700">${borrowedFundsResult.netReturns.toFixed(2)}</span></p> */}
 
-                                        {/* <p>Withdraw Period : <span className="font-semibold">{borrowedFundsResult.withdrawPeriod} Days</span></p> */}
+                                        {/* <p>Bitnest Loop : <span className="font-semibold">{borrowedFundsResult.withdrawPeriod} Days</span></p> */}
                                         {borrowCompoundMode ? (
                                             <>
-                                                <p className="font-bold text-blue-600">Withdraw Amount at end of loan: ${borrowedFundsResult.initialWithdrawReturns.toFixed(2)} per {borrowedFundsResult.withdrawPeriod} Days</p>
-                                                <p className="font-bold text-green-700">Total Net Profit end of loan: ${(borrowedFundsResult.netReturns + borrowedFundsResult.initialWithdrawReturns).toFixed(2)}</p>
-                                                <p className="font-bold text-green-700">Total Net Profit: ${borrowedFundsResult.totalNetProfit.toFixed(2)}</p>
+                                                <p className="font-bold text-blue-600">Withdraw Amount at end of loan: {borrowedFundsResult.initialWithdrawReturns.toFixed(2)} USDT per {borrowedFundsResult.withdrawPeriod} Days</p>
+                                                <p className="font-bold text-green-700">Total Net Profit end of loan: {(borrowedFundsResult.netReturns + borrowedFundsResult.initialWithdrawReturns).toFixed(2)} USDT</p>
+                                                <p className="font-bold text-green-700">Total Net Profit: {borrowedFundsResult.totalNetProfit.toFixed(2)} USDT</p>
                                             </>
                                         ) : (
                                             <>
-                                                <p className="font-bold text-blue-600">Withdraw Amount: ${borrowedFundsResult.withdrawReturns.toFixed(2)} per {borrowedFundsResult.withdrawPeriod} Days</p>
-                                                <p className="font-bold text-green-700">Total Net Profit: ${borrowedFundsResult.totalNetProfit.toFixed(2)}</p>
+                                                {/* <p className="font-bold text-blue-600">Withdraw Amount: ${borrowedFundsResult.withdrawReturns.toFixed(2)} per {borrowedFundsResult.withdrawPeriod} Days</p> */}
+                                                    <p className="font-bold text-blue-600">Profit: {borrowedFundsResult.totalNetProfit.toFixed(2)} USDT</p>
+                                                    <p className="font-bold text-green-700">Reinvest Profit Returns: {borrowedFundsResult.withdrawReturns.toFixed(2)} USDT per {borrowedFundsResult.withdrawPeriod} Days</p>
                                             </>
                                         )}
                                     </div>
@@ -616,11 +699,12 @@ export const BitNestCalculator = () => {
                     </div>
 
                     {/* Reverse Borrowed Funds Scenario */}
-                    <div className="bg-white rounded-md p-4 space-y-4">
-                        <h3 className="text-md font-medium text-gray-700">Reverse Borrowed Funds Scenario</h3>
+                    <div className="bg-white p-4 space-y-4">
+                        <h3 className="text-lg font-medium text-gray-700">Reverse Borrowed Funds Scenario</h3>
+                        <Label htmlFor="reverseDescription" className="text-xs text-gray-600 mb-1 block">Calculate how much you need to borrow in order to make X amount per Period recurring. </Label>
                         <div className="space-y-4">
                             <div>
-                                <Label htmlFor="desiredWithdraw" className="text-xs text-gray-600 mb-1 block">Desired Withdraw Amount</Label>
+                                <Label htmlFor="desiredWithdraw" className="text-xs text-gray-600 mb-1 block">Desired Withdraw Amount Per Bitnest Loop</Label>
                                 <Input
                                     id="desiredWithdraw"
                                     type="text"
@@ -683,10 +767,10 @@ export const BitNestCalculator = () => {
                                 </Select>
                             </div>
                             <div>
-                                <Label htmlFor="withdrawPeriod2" className="text-xs text-gray-600 mb-1 block">Withdraw Period</Label>
+                                <Label htmlFor="withdrawPeriod2" className="text-xs text-gray-600 mb-1 block">Bitnest Loop</Label>
                                 <Select value={withdrawPeriod2} onValueChange={setWithdrawPeriod2}>
                                     <SelectTrigger className="w-full border border-gray-300 rounded">
-                                        <SelectValue placeholder="Select withdraw period" />
+                                        <SelectValue placeholder="Select Bitnest Loop" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {Object.entries(RATES).map(([days, rate]) => (
@@ -707,13 +791,14 @@ export const BitNestCalculator = () => {
                                 <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
                                     <h3 className="font-bold text-xl text-gray-800 mb-4">Reverse Borrowed Funds Results</h3>
                                     <div className="grid md:grid-cols-3 gap-2">
-                                        <p>Desired Withdraw Amount: <span className="font-semibold text-blue-700">${reverseBorrowedFundsResult.desiredWithdrawAmount.toFixed(2)} per {reverseBorrowedFundsResult.withdrawPeriod} Days</span></p>
-                                        <p>Borrow Period: <span className="font-semibold">{reverseBorrowedFundsResult.borrowPeriod} Days</span></p>
-                                        <p>Withdraw Period: <span className="font-semibold">{reverseBorrowedFundsResult.withdrawPeriod} Days</span></p>
-                                        <p>Required Borrowed Amount: <span className="font-semibold text-green-600">${reverseBorrowedFundsResult.borrowedAmountNeeded.toFixed(2)}</span></p>
-                                        <p>Net Returns Needed: <span className="font-semibold text-blue-700">${reverseBorrowedFundsResult.netReturnsNeeded.toFixed(2)}</span></p>
-                                        <p className="font-bold text-blue-600">Withdraw Amount: ${reverseBorrowedFundsResult.withdrawReturns.toFixed(2)} per {reverseBorrowedFundsResult.withdrawPeriod} Days</p>
-                                        <p className="font-bold text-green-700">Total Net Profit: ${reverseBorrowedFundsResult.totalNetProfit.toFixed(2)}</p>
+                                        {/* <p>Desired Withdraw Amount: <span className="font-semibold text-blue-700">${reverseBorrowedFundsResult.desiredWithdrawAmount.toFixed(2)} per {reverseBorrowedFundsResult.withdrawPeriod} Days</span></p> */}
+                                        {/* <p>Borrow Period: <span className="font-semibold">{reverseBorrowedFundsResult.borrowPeriod} Days</span></p> */}
+                                        {/* <p>Bitnest Loop: <span className="font-semibold">{reverseBorrowedFundsResult.withdrawPeriod} Days</span></p> */}
+                                        <p className="font-bold" >Required Borrowed Amount: <span className="font-semibold text-green-600">{reverseBorrowedFundsResult.borrowedAmountNeeded.toFixed(2)}</span> USDT</p>
+                                        <p className="font-bold text-red-600">Borrowing Cost: <span className="font-semibold">{(reverseBorrowedFundsResult.totalFees).toFixed(4)}</span> USDT</p>
+                                        <p className="font-bold text-blue-600">Net Profit Generated: <span className="font-semibold text-blue-700">{reverseBorrowedFundsResult.netReturnsNeeded.toFixed(2)}</span> USDT</p>
+                                        <p className="font-bold text-green-700">Reinvest Profit Returns: {reverseBorrowedFundsResult.withdrawReturns.toFixed(2)} USDT per {reverseBorrowedFundsResult.withdrawPeriod} Days</p>
+                                        {/* <p className="font-bold text-green-700">Total Net Profit: ${reverseBorrowedFundsResult.totalNetProfit.toFixed(2)}</p> */}
                                     </div>
                                 </div>
                             )}
@@ -721,6 +806,38 @@ export const BitNestCalculator = () => {
                     </div>
                 </CardContent>
             </Card>
+
+            {/* Bottom Join Button and Mobile Instructions */}
+            {inviteCode && (
+                <div className="w-full max-w-xl mt-4 space-y-4">
+                    <Button
+                        onClick={handleSignup}
+                        className="w-full bg-[#FF0000] hover:bg-[#E30B5C] text-white py-6 text-lg font-bold"
+                    >
+                        Join Bitnest Today!
+                    </Button>
+
+                    <div className="text-center space-y-2">
+                        <p className="text-sm text-gray-600">
+                            On mobile device - copy this url and paste it in your metamask wallet browser
+                        </p>
+                        <button
+                            onClick={copySignup}
+                            className="text-[#6436C0] hover:text-[#5328A9] underline text-sm break-all"
+                        >
+                            https://bitnest.me/{inviteCode}
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Toast Notification */}
+            {showToast && (
+                <div className={`fixed bottom-4 right-4 px-4 py-2 rounded-lg shadow-lg ${toastType === 'success' ? 'bg-green-500' : 'bg-red-500'
+                    } text-white transition-opacity duration-300`}>
+                    {toastMessage}
+                </div>
+            )}
         </div>
     );
 };
